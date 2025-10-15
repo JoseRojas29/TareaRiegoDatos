@@ -72,4 +72,3 @@ void ZonaRiego::desactivarRiego() {
 bool ZonaRiego::getEstadoRiego() {
     return estadoRiego;
 }
-
