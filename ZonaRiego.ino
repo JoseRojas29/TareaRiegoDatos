@@ -10,24 +10,48 @@ struct HorarioRiego {
 
 class ZonaRiego {
 private:
-    int idZona;          // Identificador de la zona (ej. 1, 2, 3)
-    int pinSensor;       // Pin donde está conectado el sensor de humedad
-    int pinRiego;        // Pin que controla la bomba o válvula de riego
-    int humedadMin;      // Umbral mínimo de humedad para activar riego
-    int humedadMax;      // Umbral máximo para desactivar riego
-    bool estadoRiego;    // Estado actual del riego (true = encendido)
+    int idZona;          // 1,2,3
+    int pinSensor;       // A0/A1/A2
+    int pinRiego;        // D10/D9/D8 (o los que uses)
+    int humedadMin;      // umbral mínimo (activa)
+    int humedadMax;      // umbral máximo (apaga)
+    bool estadoRiego;    // true = ON
+    bool bloqueoGlobal;  // true = bloqueo por clima
+
+    int leerHumedadCruda();
+    int filtrar(int muestra);
 
 public:
-    ZonaRiego(int id, int sensorPin, int riegoPin, int minH, int maxH); // Constructor para inicializar la zona
-    
-    actualizarHumedad(); // Decide si se riega o no según humedad actual
-    debeRegar();         // Retorna true si la humedad está por debajo del mínimo
-    activarRiego();      // Enciende el riego
-    desactivarRiego();   // Apaga el riego
-    leerHumedad();       // Lee el valor del sensor
-    getEstadoRiego();    // Retorna si el riego está activo o no
+    // Constructor: no lleva tipo de retorno (los constructores nunca devuelven valor)
+    ZonaRiego(int id, int sensorPin, int riegoPin, int minH, int maxH);
 
+    // Inicialización de pines/estado. Solo hace acciones -> void
+    void begin();
+
+    // Activa/desactiva el bloqueo global por clima. Solo cambia estado -> void
+    void setBloqueoGlobal(bool on);
+
+    // Decide encender/apagar según humedad y bloqueo. Solo efectos -> void
+    void actualizarHumedad();
+
+    // ¿Está por debajo del mínimo de humedad? -> devuelve SÍ/NO
+    bool debeRegar() const;
+
+    // Enciende/apaga el actuador. Solo efectos -> void
+    void activarRiego();
+    void desactivarRiego();
+
+    // Lee el sensor de humedad (0..1023 o 0..100). Devuelve un número -> int
+    int leerHumedad() const;
+
+    // ¿El riego está actualmente encendido? -> devuelve SÍ/NO
+    bool getEstadoRiego() const;
+
+private:
+    // ... tus atributos ...
 };
+
+
 
 #endif
 
