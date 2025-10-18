@@ -3,9 +3,11 @@
 #define ZONARIEGO_H
 
 struct HorarioRiego {
-    int diaSemana;     // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
-    int horaInicio;    // En minutos desde medianoche
-    int horaFin;       // En minutos desde medianoche
+    int horaInicio;       // En minutos desde medianoche
+    int horaFin;          // En minutos desde medianoche
+    int frecuenciaDias;   // Cada cuántos días se permite regar
+    int ultimoRiego;      // Día del sistema en que se regó por última vez
+    bool zonaActiva;      // Si la zona está habilitada o no
 };
 
 class ZonaRiego {
@@ -17,13 +19,12 @@ private:
     int humedadMax;      // umbral máximo (apaga)
     bool estadoRiego;    // true = ON
     bool bloqueoGlobal;  // true = bloqueo por clima
-
-    int leerHumedadCruda();
-    int filtrar(int muestra);
+    HorarioRiego horario;
+    
+    bool estaEnHorario(unsigned long tiempoActualMinutos) const;
 
 public:
-    // Constructor: no lleva tipo de retorno (los constructores nunca devuelven valor)
-    ZonaRiego(int id, int sensorPin, int riegoPin, int minH, int maxH);
+    ZonaRiego(int id, int sensorPin, int riegoPin, int minH, int maxH, HorarioRiego h);
 
     // Inicialización de pines/estado. Solo hace acciones -> void
     void begin();
@@ -47,15 +48,14 @@ public:
     // ¿El riego está actualmente encendido? -> devuelve SÍ/NO
     bool getEstadoRiego() const;
 
-private:
-    // ... tus atributos ...
+    void actualizar(unsigned long tiempoActualMinutos, int diaActual);
 };
-
-
 
 #endif
 
-// ZonaRiego.cpp
+
+// ZonaRiego.cpp}
+#pragma once
 #include "ZonaRiego.h"
 #include <Arduino.h>
 
@@ -66,28 +66,49 @@ ZonaRiego::ZonaRiego(int id, int sensorPin, int riegoPin, int minH, int maxH, Ho
     humedadMin = minH;
     humedadMax = maxH;
     estadoRiego = false;
+    bloqueoGlobal = false;
     horario = h;
-    pinMode(pinRiego, OUTPUT); // Configura el pin de riego como salida
 }
 
-int ZonaRiego::leerHumedad() {
-    return analogRead(pinSensor); // Simulación básica
+void ZonaRiego::begin() {
+    pinMode(pinRiego, OUTPUT);
+    desactivarRiego();
 }
 
-void ZonaRiego::actualizar(unsigned long tiempoActualMinutos) {
-    if (estaEnHorario(tiempoActualMinutos) && debeRegar()) {
+void ZonaRiego::setBloqueoGlobal(bool on) {
+    bloqueoGlobal = on;
+}
+
+void ZonaRiego::actualizar(unsigned long tiempoActualMinutos, int diaActual) {
+    if (!horario.zonaActiva || bloqueoGlobal) {
+        desactivarRiego();
+        return;
+    }
+
+    if (estadoRiego) {
+        if (leerHumedad() >= humedadMax) {
+            desactivarRiego();
+        }
+        return;
+    }
+
+    if (estaEnHorario(tiempoActualMinutos) &&
+        debeRegar() &&
+        (diaActual - horario.ultimoRiego >= horario.frecuenciaDias)) {
+        
         activarRiego();
+        horario.ultimoRiego = diaActual;
     } else {
         desactivarRiego();
     }
 }
 
-bool ZonaRiego::debeRegar() {
+bool ZonaRiego::debeRegar() const {
     int humedad = leerHumedad();
     return humedad < humedadMin;
 }
 
-bool ZonaRiego::estaEnHorario(unsigned long tiempoActualMinutos) {
+bool ZonaRiego::estaEnHorario(unsigned long tiempoActualMinutos) const {
     return tiempoActualMinutos >= horario.horaInicio && tiempoActualMinutos <= horario.horaFin;
 }
 
@@ -101,6 +122,10 @@ void ZonaRiego::desactivarRiego() {
     estadoRiego = false;
 }
 
-bool ZonaRiego::getEstadoRiego() {
+int ZonaRiego::leerHumedad() const {
+    return analogRead(pinSensor);
+}
+
+bool ZonaRiego::getEstadoRiego() const {
     return estadoRiego;
 }

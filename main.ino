@@ -3,10 +3,15 @@
 #include "IClima.h"
 #include "ClimaSim.h"
 
-// --- ZONAS: ajusta pines/umbrales a tu proyecto ---
-ZonaRiego zona1(1, A0, 10, 300, 700);
-ZonaRiego zona2(2, A1,  9, 400, 750);
-ZonaRiego zona3(3, A2,  8, 350, 720);
+// --- HORARIOS: simulados en minutos desde medianoche ---
+HorarioRiego horario1 = {420, 435, 1, -1, true};  // 7:00–7:15 AM, diario
+HorarioRiego horario2 = {1260, 1320, 3, -1, true}; // 9:00–10:00 PM, cada 3 días
+HorarioRiego horario3 = {0, 0, 1, -1, false};      // zona desactivada
+
+// --- ZONAS: pines/umbrales ajustados al proyecto ---
+ZonaRiego zona1(1, A0, 10, 300, 700, horario1);
+ZonaRiego zona2(2, A1,  9, 400, 750, horario2);
+ZonaRiego zona3(3, A2,  8, 350, 720, horario3);
 
 // --- CLIMA: simulador (Serial + opcional A3/D4) ---
 ClimaSim clima;
@@ -38,12 +43,16 @@ void loop() {
   const bool bloqueo = (prob > UMBRAL_LLUVIA);
   aplicarBloqueoTodas(bloqueo);
 
-  // 2) Actualiza zonas (humedad y clima)
-  zona1.actualizarHumedad();
-  zona2.actualizarHumedad();
-  zona3.actualizarHumedad();
+  // 2) Calcular tiempo actual en minutos y día simulado
+  unsigned long tiempoActualMinutos = (millis() / 1000) / 60;
+  int diaActual = tiempoActualMinutos / 1440;
 
-  // 3) Telemetría cada ~1 s
+  // 3) Actualiza zonas con lógica completa
+  zona1.actualizar(tiempoActualMinutos % 1440, diaActual);
+  zona2.actualizar(tiempoActualMinutos % 1440, diaActual);
+  zona3.actualizar(tiempoActualMinutos % 1440, diaActual);
+
+  // 4) Telemetría cada ~1 s
   static unsigned long t0 = 0;
   unsigned long now = millis();
   if (now - t0 >= 1000) {
